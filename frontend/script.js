@@ -1,216 +1,245 @@
+const API_URL = "/users";
 
-// Encontrando o título da página
-const titulo = document.querySelector("h1");
+const formulario = document.getElementById("formUsuario");
+const listaUsuarios = document.getElementById("listaUsuarios");
+const mensagem = document.getElementById("mensagem");
 
-titulo.textContent = "Gerenciamento de Usuários";
+const campoNome = document.getElementById("nome");
+const campoEmail = document.getElementById("email");
+const campoLogin = document.getElementById("login");
+const campoSenha = document.getElementById("senha");
+const campoAtivo = document.getElementById("ativo");
 
-// Encontrando os campos do formulário
-const campoNome = document.querySelector("#nome");
-const campoEmail = document.querySelector("#email");
-const campoLogin = document.querySelector("#login");
-const campoSenha = document.querySelector("#senha");
-const campoAtivo = document.querySelector("#ativo");
+const botaoCadastrar = document.getElementById("btnCadastrar");
 
-// Encontrando os elementos da página
-const listaUsuarios = document.querySelector("#listaUsuarios");
-const botaoCadastrar = document.querySelector("#btnCadastrar");
-const mensagem = document.querySelector("#mensagem");
+let idEdicao = null;
 
-// Criando o array que guarda os usuários
-const usuarios = [];
+// Exibe mensagens na tela
+function mostrarMensagem(texto, tipo = "") {
+    mensagem.textContent = texto;
+    mensagem.className = tipo;
+}
 
-// Variável para identificar se estamos editando alguém
-let indiceEdicao = -1;
+// Faz requisições para a API
+async function requisicaoAPI(url, metodo = "GET", dados = null) {
+    const configuracao = {
+        method: metodo,
+        headers: {
+            "Content-Type": "application/json"
+        }
+    };
 
-// Função para mostrar os usuários na tela
-function exibirUsuarios() {
+    if (dados !== null) {
+        configuracao.body = JSON.stringify(dados);
+    }
 
-    // Limpa a lista antes de mostrar novamente
-    listaUsuarios.textContent = "";
+    const resposta = await fetch(url, configuracao);
 
-    // Percorre todos os usuários cadastrados
-    for (let i = 0; i < usuarios.length; i++) {
+    const resultado = await resposta.json();
 
-        // Cria um espaço para mostrar os dados
-        const paragrafo = document.createElement("p");
+    if (!resposta.ok) {
+        throw new Error(resultado.erro || resultado.mensagem || "Ocorreu um erro na requisição.");
+    }
 
-        // Verifica o status do usuário
-        let status = "Inativo";
+    return resultado;
+}
 
-        if (usuarios[i].ativo) {
-            status = "Ativo";
+// Limpa o formulário
+function limparFormulario() {
+    formulario.reset();
+
+    campoAtivo.checked = true;
+    campoSenha.required = false;
+
+    idEdicao = null;
+
+    botaoCadastrar.textContent = "Cadastrar";
+}
+
+// Carrega os usuários cadastrados
+async function carregarUsuarios() {
+    listaUsuarios.innerHTML = "<p>Carregando usuários...</p>";
+
+    try {
+        const usuarios = await requisicaoAPI(API_URL);
+
+        listaUsuarios.innerHTML = "";
+
+        if (usuarios.length === 0) {
+            listaUsuarios.innerHTML = "<p>Nenhum usuário cadastrado.</p>";
+            return;
         }
 
-        // Mostra as informações do usuário
-        paragrafo.textContent =
-            usuarios[i].nome + " - " +
-            usuarios[i].email + " - " +
-            usuarios[i].login + " - " +
-            status;
+        usuarios.forEach((usuario) => {
+            const elemento = document.createElement("div");
+            elemento.classList.add("usuario");
 
-        // Cria o botão de editar
-        const botaoEditar = document.createElement("button");
+            const nome = document.createElement("h3");
+            nome.textContent = usuario.nome;
 
-        botaoEditar.textContent = "Editar";
+            const email = document.createElement("p");
+            email.textContent = "E-mail: " + usuario.email;
 
-        // Quando clicar, carrega os dados para edição
-        botaoEditar.addEventListener("click", function() {
+            const login = document.createElement("p");
+            login.textContent = "Login: " + usuario.login;
 
-            campoNome.value = usuarios[i].nome;
-            campoEmail.value = usuarios[i].email;
-            campoLogin.value = usuarios[i].login;
-            campoAtivo.checked = usuarios[i].ativo;
+            const status = document.createElement("p");
+            status.textContent = usuario.ativo ? "Ativo" : "Inativo";
 
-            // Guarda o índice do usuário que será editado
-            indiceEdicao = i;
+            const botoes = document.createElement("div");
+            botoes.classList.add("botoes");
 
-            // Altera o texto do botão
-            botaoCadastrar.textContent = "Salvar alterações";
+            const botaoEditar = document.createElement("button");
+            botaoEditar.textContent = "Editar";
 
-            mensagem.textContent = "Editando usuário: " + usuarios[i].nome;
+            botaoEditar.addEventListener("click", () => {
+                editarUsuario(usuario);
+            });
+
+            const botaoExcluir = document.createElement("button");
+            botaoExcluir.textContent = "Excluir";
+            botaoExcluir.classList.add("botaoExcluir");
+
+            botaoExcluir.addEventListener("click", () => {
+                excluirUsuario(usuario.id);
+            });
+
+            botoes.appendChild(botaoEditar);
+            botoes.appendChild(botaoExcluir);
+
+            elemento.appendChild(nome);
+            elemento.appendChild(email);
+            elemento.appendChild(login);
+            elemento.appendChild(status);
+            elemento.appendChild(botoes);
+
+            listaUsuarios.appendChild(elemento);
         });
 
-        // Cria o botão de excluir
-        const botaoExcluir = document.createElement("button");
-
-        botaoExcluir.textContent = "Excluir";
-
-        // Quando clicar, remove o usuário
-        botaoExcluir.addEventListener("click", function() {
-
-            usuarios.splice(i, 1);
-
-            exibirUsuarios();
-
-            mensagem.textContent = "Usuário excluído com sucesso!";
-        });
-
-        // Adiciona os botões na página
-        paragrafo.appendChild(botaoEditar);
-        paragrafo.appendChild(botaoExcluir);
-
-        // Adiciona o usuário na lista
-        listaUsuarios.appendChild(paragrafo);
+    } catch (erro) {
+        listaUsuarios.innerHTML = "<p>Não foi possível carregar os usuários.</p>";
+        mostrarMensagem(erro.message, "erro");
     }
 }
 
-// Detectando o clique no botão de cadastro
-botaoCadastrar.addEventListener("click", function() {
+// Preenche o formulário para edição
+function editarUsuario(usuario) {
+    idEdicao = usuario.id;
 
-    // Pegando os valores digitados
-    const nomeDigitado = campoNome.value.trim();
-    const emailDigitado = campoEmail.value.trim();
-    const loginDigitado = campoLogin.value.trim();
-    const senhaDigitada = campoSenha.value;
+    campoNome.value = usuario.nome;
+    campoEmail.value = usuario.email;
+    campoLogin.value = usuario.login;
+    campoSenha.value = "";
+    campoAtivo.checked = usuario.ativo;
 
-    // Verificando se a opção de usuário ativo está marcada
-    const usuarioAtivo = campoAtivo.checked;
+    campoSenha.required = false;
 
-    // Variáveis para verificar duplicidade
-    let emailJaCadastrado = false;
-    let loginJaCadastrado = false;
+    botaoCadastrar.textContent = "Salvar alterações";
 
-    // Percorrendo os usuários cadastrados
-    for (let i = 0; i < usuarios.length; i++) {
+    mostrarMensagem("Editando usuário.", "sucesso");
 
-        // Não compara o usuário com ele mesmo durante a edição
-        if (i !== indiceEdicao) {
+    formulario.scrollIntoView({
+        behavior: "smooth"
+    });
+}
 
-            if (usuarios[i].email === emailDigitado) {
-                emailJaCadastrado = true;
-            }
+// Exclui um usuário
+async function excluirUsuario(id) {
+    const confirmar = confirm("Tem certeza que deseja excluir este usuário?");
 
-            if (usuarios[i].login === loginDigitado) {
-                loginJaCadastrado = true;
-            }
-        }
+    if (!confirmar) {
+        return;
     }
 
-    // Validando o nome
-    if (nomeDigitado === "") {
+    try {
+        await requisicaoAPI(`${API_URL}/${id}`, "DELETE");
 
-        mensagem.textContent = "Preencha o nome!";
+        mostrarMensagem("Usuário excluído com sucesso!", "sucesso");
 
-    } else if (nomeDigitado.length < 3) {
+        await carregarUsuarios();
 
-        mensagem.textContent = "O nome deve ter pelo menos 3 caracteres!";
+    } catch (erro) {
+        mostrarMensagem(erro.message, "erro");
+    }
+}
 
-    // Validando o e-mail
-    } else if (emailDigitado === "") {
+// Cadastra ou atualiza um usuário
+botaoCadastrar.addEventListener("click", async () => {
+    const nome = campoNome.value.trim();
+    const email = campoEmail.value.trim();
+    const login = campoLogin.value.trim();
+    const senha = campoSenha.value;
+    const ativo = campoAtivo.checked;
 
-        mensagem.textContent = "Preencha o e-mail!";
+    if (nome.length < 3) {
+        mostrarMensagem("O nome precisa ter pelo menos 3 caracteres.", "erro");
+        return;
+    }
 
-    } else if (!emailDigitado.includes("@") || !emailDigitado.includes(".")) {
+    if (!email || !campoEmail.checkValidity()) {
+        mostrarMensagem("Informe um e-mail válido.", "erro");
+        return;
+    }
 
-        mensagem.textContent = "Digite um e-mail válido!";
+    if (login.length < 3) {
+        mostrarMensagem("O login precisa ter pelo menos 3 caracteres.", "erro");
+        return;
+    }
 
-    } else if (emailJaCadastrado) {
+    if (idEdicao === null && senha.length < 8) {
+        mostrarMensagem("A senha precisa ter pelo menos 8 caracteres.", "erro");
+        return;
+    }
 
-        mensagem.textContent = "Este e-mail já está cadastrado!";
+    if (senha.length > 0 && senha.length < 8) {
+        mostrarMensagem("A senha precisa ter pelo menos 8 caracteres.", "erro");
+        return;
+    }
 
-    // Validando o login
-    } else if (loginDigitado === "") {
+    const dadosUsuario = {
+        nome,
+        email,
+        login,
+        ativo
+    };
 
-        mensagem.textContent = "Preencha o login!";
+    if (senha.length > 0) {
+        dadosUsuario.senha = senha;
+    }
 
-    } else if (loginDigitado.length < 3) {
+    const metodo = idEdicao === null ? "POST" : "PATCH";
+    const url = idEdicao === null ? API_URL : `${API_URL}/${idEdicao}`;
 
-        mensagem.textContent = "O login deve ter pelo menos 3 caracteres!";
+    botaoCadastrar.disabled = true;
+    botaoCadastrar.textContent = "Salvando...";
 
-    } else if (loginJaCadastrado) {
+    try {
+        await requisicaoAPI(url, metodo, dadosUsuario);
 
-        mensagem.textContent = "Este login já está cadastrado!";
+        mostrarMensagem(
+            idEdicao === null
+                ? "Usuário cadastrado com sucesso!"
+                : "Usuário atualizado com sucesso!",
+            "sucesso"
+        );
 
-    // Validando a senha apenas durante o cadastro
-    } else if (indiceEdicao === -1 && senhaDigitada === "") {
+        limparFormulario();
 
-        mensagem.textContent = "Preencha a senha!";
+        await carregarUsuarios();
 
-    } else if (indiceEdicao === -1 && senhaDigitada.length < 8) {
+    } catch (erro) {
+        mostrarMensagem(erro.message, "erro");
 
-        mensagem.textContent = "A senha deve ter pelo menos 8 caracteres!";
+    } finally {
+        botaoCadastrar.disabled = false;
 
-    } else {
-
-        // Verifica se estamos editando ou cadastrando
-        if (indiceEdicao === -1) {
-
-            // Criando um novo usuário
-            usuarios.push({
-                nome: nomeDigitado,
-                email: emailDigitado,
-                login: loginDigitado,
-                ativo: usuarioAtivo
-            });
-
-            mensagem.textContent = "Usuário cadastrado com sucesso!";
-
-        } else {
-
-            // Atualizando os dados do usuário
-            usuarios[indiceEdicao].nome = nomeDigitado;
-            usuarios[indiceEdicao].email = emailDigitado;
-            usuarios[indiceEdicao].login = loginDigitado;
-            usuarios[indiceEdicao].ativo = usuarioAtivo;
-
-            mensagem.textContent = "Usuário atualizado com sucesso!";
-
-            // Finaliza o modo de edição
-            indiceEdicao = -1;
-
+        if (idEdicao === null) {
             botaoCadastrar.textContent = "Cadastrar";
+        } else {
+            botaoCadastrar.textContent = "Salvar alterações";
         }
-
-        // Atualiza a lista na tela
-        exibirUsuarios();
-
-        // Limpa os campos
-        campoNome.value = "";
-        campoEmail.value = "";
-        campoLogin.value = "";
-        campoSenha.value = "";
-
-        // Deixa a opção ativo marcada novamente
-        campoAtivo.checked = true;
     }
 });
+
+// Carrega a lista ao abrir a página
+carregarUsuarios();
