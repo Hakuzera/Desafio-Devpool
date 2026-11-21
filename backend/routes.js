@@ -68,6 +68,11 @@ function corpoValido(body) {
     );
 }
 
+// Verifica se o erro veio de uma duplicidade (UNIQUE) no banco
+function erroDeDuplicidade(erro) {
+    return String(erro && erro.message).includes("UNIQUE");
+}
+
 // ROTA 1: Cadastrar usuário
 router.post("/", async (req, res) => {
     try {
@@ -96,7 +101,8 @@ router.post("/", async (req, res) => {
         }
 
         const nomeLimpo = nome.trim();
-        const emailLimpo = email.trim();
+        // E-mail em minúsculas para não duplicar com letras diferentes
+        const emailLimpo = email.trim().toLowerCase();
         const loginLimpo = login.trim();
 
         // Verificando o tamanho do nome
@@ -164,20 +170,30 @@ router.post("/", async (req, res) => {
             ]
         );
 
-        // Salvando as alterações no arquivo SQLite
-        salvarBanco();
-
-        // Buscando o usuário criado
+        // Pegando o ID ANTES de salvar o arquivo.
+        // O salvarBanco() usa db.export(), que reinicia o banco
+        // e faz o last_insert_rowid() voltar para 0.
         const id = db.exec(
             "SELECT last_insert_rowid() AS id"
         )[0].values[0][0];
 
+        // Salvando as alterações no arquivo SQLite
+        salvarBanco();
+
+        // Buscando o usuário criado
         const usuario = buscarUsuario(id);
 
         // Respondendo sem enviar a senha
         return res.status(201).json(dadosPublicos(usuario));
 
     } catch (erro) {
+        // Duas requisições ao mesmo tempo podem passar pela verificação
+        if (erroDeDuplicidade(erro)) {
+            return res.status(400).json({
+                erro: "E-mail ou login já cadastrado!"
+            });
+        }
+
         console.error("Erro ao cadastrar usuário:", erro);
 
         return res.status(500).json({
@@ -297,9 +313,10 @@ router.patch("/:id", async (req, res) => {
             ? usuario.nome
             : nome.trim();
 
+        // E-mail sempre em minúsculas
         const novoEmail = email === undefined
-            ? usuario.email
-            : email.trim();
+            ? usuario.email.toLowerCase()
+            : email.trim().toLowerCase();
 
         const novoLogin = login === undefined
             ? usuario.login
@@ -382,6 +399,13 @@ router.patch("/:id", async (req, res) => {
         return res.status(200).json(dadosPublicos(usuarioAtualizado));
 
     } catch (erro) {
+        // Duas requisições ao mesmo tempo podem passar pela verificação
+        if (erroDeDuplicidade(erro)) {
+            return res.status(400).json({
+                erro: "E-mail ou login já cadastrado!"
+            });
+        }
+
         console.error("Erro ao atualizar usuário:", erro);
 
         return res.status(500).json({
