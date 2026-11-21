@@ -1,4 +1,3 @@
-
 * {
     margin: 0;
     padding: 0;
@@ -80,15 +79,43 @@ button:hover {
     background-color: #1d4ed8;
 }
 
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 #btnCadastrar {
     margin-top: 10px;
     font-weight: bold;
 }
 
+/* Botão de cancelar a edição */
+.botaoCancelar {
+    background-color: #6b7280;
+    margin-top: 10px;
+}
+
+.botaoCancelar:hover {
+    background-color: #4b5563;
+}
+
+.botaoCancelar[hidden] {
+    display: none;
+}
+
+/* Mensagens de feedback */
 #mensagem {
     margin: 18px 0;
     font-weight: bold;
     color: #2563eb;
+}
+
+#mensagem.erro {
+    color: #dc2626;
+}
+
+#mensagem.sucesso {
+    color: #16a34a;
 }
 
 #listaUsuarios {
@@ -97,15 +124,24 @@ button:hover {
     gap: 12px;
 }
 
+/* Cartão do usuário: dados à esquerda e botões à direita */
 .usuario {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 15px;
     align-items: center;
-    gap: 15px;
     padding: 16px;
     border: 1px solid #ddd;
     border-radius: 8px;
     background-color: #fafafa;
+}
+
+.usuario > * {
+    grid-column: 1;
+}
+
+.usuario h3 {
+    margin-bottom: 4px;
 }
 
 .usuario p {
@@ -118,6 +154,11 @@ button:hover {
     gap: 12px;
     flex-shrink: 0;
     margin-left: 15px;
+}
+
+.usuario > .botoes {
+    grid-column: 2;
+    grid-row: 1 / span 4;
 }
 
 .botoes button {
@@ -142,12 +183,14 @@ button:hover {
     }
 
     .usuario {
-        flex-direction: column;
-        align-items: stretch;
+        grid-template-columns: 1fr;
     }
 
-    .botoes {
+    .usuario > .botoes {
+        grid-column: 1;
+        grid-row: auto;
         margin-left: 0;
+        margin-top: 12px;
     }
 
     .botoes button {
